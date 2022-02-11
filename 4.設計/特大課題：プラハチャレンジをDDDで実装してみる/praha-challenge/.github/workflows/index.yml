@@ -1,0 +1,146 @@
+name: Workflows
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  setup:
+    name: setup cache
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node: [12]
+
+    steps:
+      - name: check out Git repository
+        uses: actions/checkout@v2
+
+      - name: set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: cache node_modules
+        id: node_modules_cache_id
+        uses: actions/cache@v2
+        with:
+          path: backend/node_modules
+          key: ${{ matrix.os }}-node-v${{ matrix.node }}-deps-${{ hashFiles(format('{0}{1}', github.workspace, '/backend/yarn.lock')) }}
+
+      - name: install Node.js dependencies
+        run: |
+          cd backend
+          yarn install
+
+  lint:
+    name: run linters
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node: [12]
+    needs: setup
+
+    steps:
+      - name: check out Git repository
+        uses: actions/checkout@v2
+
+      - name: set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: restore node_modules
+        id: node_modules_cache_id
+        uses: actions/cache@v2
+        with:
+          path: backend/node_modules
+          key: ${{ matrix.os }}-node-v${{ matrix.node }}-deps-${{ hashFiles(format('{0}{1}', github.workspace, '/backend/yarn.lock')) }}
+
+      - name: run lint
+        run: |
+          cd backend
+          yarn lint
+
+  unit-test:
+    name: run jest unit
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node: [12]
+    needs: setup
+
+    steps:
+      - name: check out Git repository
+        uses: actions/checkout@v2
+
+      - name: set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: restore node_modules
+        id: node_modules_cache_id
+        uses: actions/cache@v2
+        with:
+          path: backend/node_modules
+          key: ${{ matrix.os }}-node-v${{ matrix.node }}-deps-${{ hashFiles(format('{0}{1}', github.workspace, '/backend/yarn.lock')) }}
+
+      - name: run jest unit
+        run: |
+          cd backend
+          yarn test:unit
+
+  integration-test:
+    name: run jest integration
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node: [12]
+    needs: setup
+
+    services:
+      postgres:
+        image: postgres:12
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: prisma2020
+          POSTGRES_DB: prisma
+          POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+          TZ: "Asia/Tokyo"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5402:5432
+
+    steps:
+      - name: check out Git repository
+        uses: actions/checkout@v2
+
+      - name: set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: restore node_modules
+        id: node_modules_cache_id
+        uses: actions/cache@v2
+        with:
+          path: backend/node_modules
+          key: ${{ matrix.os }}-node-v${{ matrix.node }}-deps-${{ hashFiles(format('{0}{1}', github.workspace, '/backend/yarn.lock')) }}
+
+      - name: run jest integration
+        run: |
+          cd backend
+          yarn test:integration
