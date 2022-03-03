@@ -36,6 +36,7 @@
     "class-validator": "^0.13.1",
     "csv": "^5.3.2",
     "dotenv": "^8.2.0",
+    "firebase-admin": "^10.0.2",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^6.6.3",

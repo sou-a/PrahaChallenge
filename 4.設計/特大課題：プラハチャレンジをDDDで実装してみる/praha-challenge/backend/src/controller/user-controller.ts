@@ -3,10 +3,13 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
   Query,
+  Req,
+  Res,
 } from '@nestjs/common'
 import { ApiResponse, ApiTags } from '@nestjs/swagger'
 import { PrismaClient } from '@prisma/client'
@@ -28,6 +31,7 @@ import { UserQS } from 'src/infra/db/query-service/user-qs'
 import { UserId } from 'src/domain/user/user-id'
 import { TaskId } from 'src/domain/task/task-id'
 import { UserFactory } from 'src/domain/user/user-factory'
+import { verifyIdToken } from 'src/infra/firebase-admin/app'
 
 @ApiTags('users')
 @Controller({
@@ -36,7 +40,17 @@ import { UserFactory } from 'src/domain/user/user-factory'
 export class UserController {
   @Get()
   @ApiResponse({ status: 200, type: FindAllUserResponse })
-  async findAllUser(): Promise<FindAllUserResponse> {
+  async findAllUser(
+    @Req() request: any,
+    @Res() res: any,
+  ): Promise<FindAllUserResponse> {
+    const userToken = request.headers.authorization
+    if (!userToken) {
+      return res.status(HttpStatus.UNAUTHORIZED).send()
+    }
+    if (!(await verifyIdToken(userToken))) {
+      return res.status(HttpStatus.UNAUTHORIZED).send()
+    }
     const prisma = new PrismaClient()
     const userRepository = new UserRepository(prisma)
     const userFactory = new UserFactory({ userRepository })
